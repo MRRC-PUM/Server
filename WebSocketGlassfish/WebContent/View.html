@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Insert title here</title>
+	</head>
+	<body>
+		<textarea id="messagesTextArea" readonly="readonly"  rows="10" cols="50"></textarea>
+		<textarea id="usersTextArea" readonly="readonly" rows="10" cols="10"></textarea><br>
+		<input id="messageText" size="50" type="text"><input type="button" onclick="sendMessage()" value="Send">
+		
+		<script type="text/javascript">
+			var webSocket = new WebSocket("ws://localhost:8080/WebSocketGlassfish/chat");
+			var messagesTextArea = document.getElementById("messagesTextArea");
+			var usersTextArea = document.getElementById("usersTextArea");
+			
+			webSocket.onmessage = function processMessage(message){
+				var jsonData = JSON.parse(message.data);
+				if(jsonData.message != null) messagesTextArea.value += jsonData.senderName +":"+ jsonData.message + "\n";
+				if(jsonData.users != null){
+					usersTextArea.value ="";
+					var i = 0;
+					usersTextArea.value += jsonData.users + "\n";
+					//while(i<jsonData.users.lenght) usersTextArea.value += jsonData.users[i++] + "\n"; 192.168.2.100
+				}
+			}
+			
+			function sendMessage() {
+				webSocket.send(messageText.value);
+				messageText.value = "";
+				
+			}
+			
+			window.onbeforeunload = function() {
+				webSocket.onclose = function(){};
+				webSocket.close();
+				
+			}
+		</script>
+	</body>
+</html>

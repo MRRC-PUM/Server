@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title>Insert title here</title>
+	</head>
+	<body>
+		<textarea id="messagesTextArea" readonly="readonly"  rows="10" cols="50"></textarea>
+		<textarea id="usersTextArea" readonly="readonly" rows="10" cols="10"></textarea><br>
+		<input id="userName" size="50" type="text"><input id="messageType" size="50" type="text"><br>
+		<input id="userText" size="50" type="text"><input id="messageText" size="50" type="text"><br>
+		<input type="button" onclick="sendMessage()" value="Send">
+		
+		<script type="text/javascript">
+			var webSocket = new WebSocket("ws://localhost:8080/WebSocketGlassfish/chat");
+			var messagesTextArea = document.getElementById("messagesTextArea");
+			var usersTextArea = document.getElementById("usersTextArea");
+			var JSONMessage;
+			var StringMessage = new Object();
+			
+			
+			
+			webSocket.onmessage = function processMessage(message){
+				var jsonData = JSON.parse(message.data);
+				//if(jsonData.message != null) messagesTextArea.value += jsonData.senderName +":"+ jsonData.message + "\n";
+				if(jsonData.message != null) messagesTextArea.value += message.data + "\n";
+				if(jsonData.users != null){
+					usersTextArea.value ="";
+					var i = 0;
+					usersTextArea.value += jsonData.users + "\n";
+					//while(i<jsonData.users.lenght) usersTextArea.value += jsonData.users[i++] + "\n"; 192.168.2.100
+				}
+			}
+			
+			function sendMessage() {
+				//webSocket.send(messageText.value);
+				
+				StringMessage.senderName = userName.value;
+				StringMessage.recipientName = userText.value;
+				StringMessage.messageType = messageType.value;
+				StringMessage.message = messageText.value;
+				JSONMessage = JSON.stringify(StringMessage);
+				//messagesTextArea.value =JSON.stringify("message,"+ messageText.value);
+				//messagesTextArea.value =JSONMessage;
+				webSocket.send(JSONMessage);
+				messageText.value = "";
+				userText.value = "";
+				
+			}
+			
+			window.onbeforeunload = function() {
+				webSocket.onclose = function(){};
+				webSocket.close();
+				
+			}
+		</script>
+	</body>
+</html>
