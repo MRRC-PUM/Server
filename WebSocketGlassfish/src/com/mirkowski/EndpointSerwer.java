@@ -1,7 +1,6 @@
 package com.mirkowski;
 
 import java.io.IOException;
-
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -24,6 +23,13 @@ public class EndpointSerwer extends Endpoint {
 
 	@Override
 	public void onClose(Session session, CloseReason closeReason) {
+		if(session.getUserProperties().get("username") != null &&  ((MyMessageHandler) session.getMessageHandlers().iterator().next()).getOpponentSession() != null){
+			((MyMessageHandler) session.getMessageHandlers().iterator().next())
+					.executeInternalTask(new Message(MyMessageHandler.getSERVERNAME()
+							, session.getUserProperties().get("username").toString()
+							, "Stop"
+							, ((MyMessageHandler) session.getMessageHandlers().iterator().next()).getOpponentSession().getUserProperties().get("username").toString() ));
+		}
 		usersSessionSet.remove(session);
 		Iterator<Session> iterator = usersSessionSet.iterator();
 		Session tempSession = null;

@@ -58,6 +58,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 				} else {
 					if(message.getMessageType().equals("ChatroomMessage"))broadcastTransmission(jsonMessage);
 					else if(message.getMessageType().equals("ChatMessage"))unicastTransmission(jsonMessage,true);
+					else echo("you are don't connected to this user");
 					
 				}
 			}
@@ -68,6 +69,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 	}
 	
 	private void sessionRegistration(Message message){
+		if(message.getSenderName().equals(SERVERNAME)) message.setSenderName("Nice try, but no !!!");
 		userSession.getUserProperties().put("username", giveName(message.getSenderName()));
 		try {
 			userSession.getBasicRemote()
@@ -247,15 +249,23 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			if(isCorrectName(message.getMessage())){
 				sendRequest(new Message(SERVERNAME, message.getMessage(), "NoStartGameResponse", message.getSenderName()));
 			} 
-		} else if(message.getMessageType().equals("EndGame")){
+		} else if(message.getMessageType().equals("EndGame") || (message.getMessageType().equals("Stop") && message.getSenderName().equals(SERVERNAME))){
 			if(isCorrectName(message.getMessage())){
 				((MyMessageHandler) opponentSession.getMessageHandlers().iterator().next()).setOpponentSession(null);
 				opponentSession = null;
-				sendRequest(new Message(SERVERNAME, message.getMessage(), "Win", message.getSenderName()));
-				sendRequest(new Message(SERVERNAME, message.getSenderName(), "Defeat", message.getMessage()));
+				
+				if(message.getMessageType().equals("Stop") && message.getSenderName().equals(SERVERNAME)){
+					sendRequest(new Message(SERVERNAME, message.getMessage(), "Win", message.getRecipientName()));
+//					sendRequest(new Message(SERVERNAME, message.getRecipientName(), "Defeat", message.getMessage()));
+				} else if(message.getSenderName().equals(opponentSession.getUserProperties().get("username"))){
+					sendRequest(new Message(SERVERNAME, message.getMessage(), "Win", message.getSenderName()));
+					sendRequest(new Message(SERVERNAME, message.getSenderName(), "Defeat", message.getMessage()));
+				} else {
+					echo("Error");
+				}
 			} 
 		} else {
-			
+			echo("Error");
 		}
 		
 	}
@@ -292,5 +302,10 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			} 
 		}
 		return null;
+	}
+	
+	public void executeInternalTask(Message message){
+		executeTask(message);
+		
 	}
 }
