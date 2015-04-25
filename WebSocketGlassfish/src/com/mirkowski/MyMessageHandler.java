@@ -12,6 +12,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 	
 	private Session userSession = null;
 	private Session opponentSession = null;
+
 	
 	public MyMessageHandler(Session session) {
 		this.userSession = session;
@@ -236,33 +237,43 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			sendResponse(message);
 		} else if(message.getMessageType().equals("StartGameRequest")){
 			if(isCorrectName(message.getMessage())){
-				sendRequest(new Message(SERVERNAME, message.getMessage(), "StartGameRequest", message.getSenderName()));
+				if(((MyMessageHandler) findSession(message.getMessage()).getMessageHandlers().iterator().next()).getOpponentSession() == null){
+					sendRequest(new Message(SERVERNAME, message.getMessage(), "StartGameRequest", message.getSenderName()));
+				} else {
+					sendRequest(new Message(SERVERNAME, message.getSenderName(), "BusyGameResponse", message.getMessage()));
+				}
 			}
 		} else if(message.getMessageType().equals("StartGameResponse")){
 			if(isCorrectName(message.getMessage())){
 				opponentSession = findSession(message.getMessage());
-				((MyMessageHandler) opponentSession.getMessageHandlers().iterator().next()).setOpponentSession(userSession);
-				sendRequest(new Message(SERVERNAME, message.getMessage(), "StartGame", message.getSenderName()));
-				sendRequest(new Message(SERVERNAME, message.getSenderName(), "StartGame", message.getMessage()));
+				if(((MyMessageHandler) opponentSession.getMessageHandlers().iterator().next()).getOpponentSession() == null){
+					((MyMessageHandler) opponentSession.getMessageHandlers().iterator().next()).setOpponentSession(userSession);
+					sendRequest(new Message(SERVERNAME, message.getMessage(), "StartGame", message.getSenderName()));
+					sendRequest(new Message(SERVERNAME, message.getSenderName(), "StartGame", message.getMessage()));
+				} else {
+					opponentSession = null;
+					echo("Error");
+				}
 			} 
 		} else if(message.getMessageType().equals("NoStartGameResponse")){
 			if(isCorrectName(message.getMessage())){
 				sendRequest(new Message(SERVERNAME, message.getMessage(), "NoStartGameResponse", message.getSenderName()));
 			} 
 		} else if(message.getMessageType().equals("EndGame") || (message.getMessageType().equals("Stop") && message.getSenderName().equals(SERVERNAME))){
-			if(isCorrectName(message.getMessage())){
-				((MyMessageHandler) opponentSession.getMessageHandlers().iterator().next()).setOpponentSession(null);
-				opponentSession = null;
-				
+			if(isCorrectName(message.getMessage()) && opponentSession != null){
+
 				if(message.getMessageType().equals("Stop") && message.getSenderName().equals(SERVERNAME)){
 					sendRequest(new Message(SERVERNAME, message.getMessage(), "Win", message.getRecipientName()));
 //					sendRequest(new Message(SERVERNAME, message.getRecipientName(), "Defeat", message.getMessage()));
-				} else if(message.getSenderName().equals(opponentSession.getUserProperties().get("username"))){
+				} else if(message.getMessage().equals(opponentSession.getUserProperties().get("username"))){
 					sendRequest(new Message(SERVERNAME, message.getMessage(), "Win", message.getSenderName()));
 					sendRequest(new Message(SERVERNAME, message.getSenderName(), "Defeat", message.getMessage()));
 				} else {
 					echo("Error");
 				}
+				
+				((MyMessageHandler) opponentSession.getMessageHandlers().iterator().next()).setOpponentSession(null);
+				opponentSession = null;
 			} 
 		} else {
 			echo("Error");
