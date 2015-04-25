@@ -8,15 +8,31 @@ import javax.websocket.MessageHandler;
 import javax.websocket.Session;
 
 public class MyMessageHandler implements MessageHandler.Whole<String> {
-
+	private final static String SERVERNAME = "System";
 	
 	private Session userSession = null;
-	
+	private Session opponentSession = null;
 	
 	public MyMessageHandler(Session session) {
 		this.userSession = session;
 	
 	}
+
+	
+	public static String getSERVERNAME() {
+		return SERVERNAME;
+	}
+
+	
+	public Session getOpponentSession() {
+		return opponentSession;
+	}
+
+
+	public void setOpponentSession(Session opponentSession) {
+		this.opponentSession = opponentSession;
+	}
+
 
 	@Override
 	public void onMessage(String jsonMessage) {
@@ -29,14 +45,20 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			
 			if (username == null) {
 				sessionRegistration(message);
-
 			} else {
 				
-				if(message.getRecipientName().equals("System")){
+				if(message.getRecipientName().equals(SERVERNAME)){
 					executeTask(message);
+				} else if(opponentSession != null){
+					 if(opponentSession.getUserProperties().get("username").equals(message.getRecipientName())){
+						 unicastTransmission(jsonMessage,false);
+					 } else {
+						 echo("Incorrect player name");
+					 }
 				} else {
-					unicastTransmission(message,true);
-					//broadcastTransmission(MessageDecoder.decode(jsonMessage));
+					if(message.getMessageType().equals("ChatroomMessage"))broadcastTransmission(jsonMessage);
+					else if(message.getMessageType().equals("ChatMessage"))unicastTransmission(jsonMessage,true);
+					
 				}
 			}
 		}
@@ -49,7 +71,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 		userSession.getUserProperties().put("username", giveName(message.getSenderName()));
 		try {
 			userSession.getBasicRemote()
-			.sendText(JsonBulider.buildJsonMessageData(new Message("System"
+			.sendText(JsonBulider.buildJsonMessageData(new Message(SERVERNAME
 					, userSession.getUserProperties().get("username").toString()
 					, "Registration"
 					, (String) userSession.getUserProperties().get("username"))));
@@ -58,6 +80,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			e.printStackTrace();
 		}
 	}
+	
 	
 	@SuppressWarnings("unused")
 	private void broadcastTransmission(Message message){
@@ -77,6 +100,20 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 		}
 	}
 	
+	private void broadcastTransmission(String jsonMessage){
+		Session tempSession = null;
+		Iterator<Session> iterator = EndpointSerwer.getusersSessionSet().iterator();
+		while (iterator.hasNext()){
+			tempSession = iterator.next();
+			try {
+				tempSession.getBasicRemote().sendText(jsonMessage);
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
+	@SuppressWarnings("unused")
 	private void unicastTransmission(Message message,Boolean echoMode){
 		Boolean isSent = false;
 		Session tempSession = null;
@@ -102,7 +139,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 		if(!isSent){
 			try {
 				userSession.getBasicRemote().sendText(JsonBulider.buildJsonMessageData(new Message(
-						"System"
+						SERVERNAME
 						, userSession.getUserProperties().get("username").toString()
 						, "Error"
 						, "The User is not available or does not exist")));
@@ -124,7 +161,6 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 	}
 	
 	
-	@SuppressWarnings("unused")
 	private void unicastTransmission(String jsonMessage,Boolean echoMode){
 		Boolean isSent = false;
 		Session tempSession = null;
@@ -147,7 +183,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 		if(!isSent){
 			try {
 				userSession.getBasicRemote().sendText(JsonBulider.buildJsonMessageData(new Message(
-						"System"
+						SERVERNAME
 						, userSession.getUserProperties().get("username").toString()
 						, "Error"
 						, "The User is not available or does not exist")));
@@ -164,13 +200,13 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			}
 	}
 	
-	private void echo(Message message){
+	private void echo(String message){
 		try {
 			userSession.getBasicRemote()
-			.sendText(JsonBulider.buildJsonMessageData(new Message("System"
+			.sendText(JsonBulider.buildJsonMessageData(new Message(SERVERNAME
 					, userSession.getUserProperties().get("username").toString()
 					, "SystemResponse"
-					, message.getMessage())));
+					, message)));
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -186,12 +222,38 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			e.printStackTrace();
 		}
 	}
+	
+	private void sendRequest(Message message){
+		unicastTransmission(JsonBulider.buildJsonMessageData(message), false);
+	}
 	private void executeTask(Message message){
 		
 		if(message.getMessageType().equals("Echo")){
-			echo(message);
+			echo(message.getMessage());
 		} else if(message.getMessageType().equals("PlayersList")){
 			sendResponse(message);
+		} else if(message.getMessageType().equals("StartGameRequest")){
+			if(isCorrectName(message.getMessage())){
+				sendRequest(new Message(SERVERNAME, message.getMessage(), "StartGameRequest", message.getSenderName()));
+			}
+		} else if(message.getMessageType().equals("StartGameResponse")){
+			if(isCorrectName(message.getMessage())){
+				opponentSession = findSession(message.getMessage());
+				((MyMessageHandler) opponentSession.getMessageHandlers().iterator().next()).setOpponentSession(userSession);
+				sendRequest(new Message(SERVERNAME, message.getMessage(), "StartGame", message.getSenderName()));
+				sendRequest(new Message(SERVERNAME, message.getSenderName(), "StartGame", message.getMessage()));
+			} 
+		} else if(message.getMessageType().equals("NoStartGameResponse")){
+			if(isCorrectName(message.getMessage())){
+				sendRequest(new Message(SERVERNAME, message.getMessage(), "NoStartGameResponse", message.getSenderName()));
+			} 
+		} else if(message.getMessageType().equals("EndGame")){
+			if(isCorrectName(message.getMessage())){
+				((MyMessageHandler) opponentSession.getMessageHandlers().iterator().next()).setOpponentSession(null);
+				opponentSession = null;
+				sendRequest(new Message(SERVERNAME, message.getMessage(), "Win", message.getSenderName()));
+				sendRequest(new Message(SERVERNAME, message.getSenderName(), "Defeat", message.getMessage()));
+			} 
 		} else {
 			
 		}
@@ -206,10 +268,29 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 		while(iterator.hasNext()){
 			if(iterator.next().equals(tempName)){
 			tempName = senderName + "(" + ++count + ")";
-			System.out.println(count+": "+tempName);
 			iterator = userNames.iterator();
 			}
 		}
 		return tempName;
+	}
+	
+	private boolean isCorrectName(String name){
+		Iterator<String> iterator = EndpointSerwer.getUserNames().iterator();
+		while(iterator.hasNext()){
+			if(iterator.next().equals(name)) return true;
+		}
+		return false;
+	}
+	
+	private Session findSession(String nameSession){
+		Session tempSession = null;
+		Iterator<Session> iterator = EndpointSerwer.getusersSessionSet().iterator();
+		while (iterator.hasNext()){
+			tempSession = iterator.next();
+			if(tempSession.getUserProperties().get("username").toString().equals(nameSession)){
+				return tempSession;
+			} 
+		}
+		return null;
 	}
 }

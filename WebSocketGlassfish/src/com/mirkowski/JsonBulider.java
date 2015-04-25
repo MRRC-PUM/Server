@@ -16,7 +16,7 @@ public class JsonBulider {
 		Iterator<String> iterator = UserNames.iterator();
 		JsonArrayBuilder jsonArrayBuilder = Json.createArrayBuilder();
 		while(iterator.hasNext())jsonArrayBuilder.add((String)iterator.next());
-		JsonObject jsonObject = Json.createObjectBuilder().add("senderName", "System")
+		JsonObject jsonObject = Json.createObjectBuilder().add("senderName", MyMessageHandler.getSERVERNAME())
 														  .add("recipientName", recipientName)
 														  .add("messageType", "PlayersList")
 														  .add("message", jsonArrayBuilder)

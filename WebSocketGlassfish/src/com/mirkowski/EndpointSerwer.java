@@ -32,7 +32,7 @@ public class EndpointSerwer extends Endpoint {
 				tempSession = iterator.next();
 				if(tempSession.getUserProperties().get("username").toString() != null)
 				tempSession.getBasicRemote().sendText(JsonBulider.buildJsonUsersData(getUserNames()
-													  , tempSession.getUserProperties().get("username").toString()));
+													  , tempSession.getUserProperties().get("username").toString())); // err java.lang.reflect.InvocationTargetException
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
