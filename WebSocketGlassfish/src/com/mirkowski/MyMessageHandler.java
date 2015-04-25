@@ -150,7 +150,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			}
 		}
 		
-		if(echoMode)
+		if(echoMode && isSent)
 			try {
 				userSession.getBasicRemote().sendText(JsonBulider.buildJsonMessageData(new Message( 
 											   userSession.getUserProperties().get("username").toString()
@@ -194,7 +194,7 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			}
 		}
 		
-		if(echoMode)
+		if(echoMode && isSent)
 			try {
 				userSession.getBasicRemote().sendText(jsonMessage);
 			} catch (IOException e) {
