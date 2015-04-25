@@ -2,6 +2,7 @@ package com.mirkowski;
 
 import java.io.IOException;
 import java.util.Iterator;
+import java.util.Set;
 
 import javax.websocket.MessageHandler;
 import javax.websocket.Session;
@@ -45,13 +46,13 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 	}
 	
 	private void sessionRegistration(Message message){
-		userSession.getUserProperties().put("username", message.getSenderName());
+		userSession.getUserProperties().put("username", giveName(message.getSenderName()));
 		try {
 			userSession.getBasicRemote()
 			.sendText(JsonBulider.buildJsonMessageData(new Message("System"
 					, userSession.getUserProperties().get("username").toString()
 					, "Registration"
-					, "you are connected as "+message.getSenderName())));
+					, (String) userSession.getUserProperties().get("username"))));
 
 		} catch (IOException e) {
 			e.printStackTrace();
@@ -195,5 +196,20 @@ public class MyMessageHandler implements MessageHandler.Whole<String> {
 			
 		}
 		
+	}
+	
+	private String giveName(String senderName){
+		Set<String> userNames = EndpointSerwer.getUserNames();
+		Iterator<String> iterator = userNames.iterator();
+		int count = 0;
+		String tempName = senderName;
+		while(iterator.hasNext()){
+			if(iterator.next().equals(tempName)){
+			tempName = senderName + "(" + ++count + ")";
+			System.out.println(count+": "+tempName);
+			iterator = userNames.iterator();
+			}
+		}
+		return tempName;
 	}
 }
